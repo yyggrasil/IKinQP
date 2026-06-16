@@ -1,0 +1,59 @@
+{
+    "name": "IRB 1300-10/1.15",
+    "joints": [
+        {
+            "type": "revolute",
+            "a": 150,
+            "alpha": -90,
+            "d": 544,
+            "theta": "theta1",
+            "offset": 0,
+            "limits": [-180,180]
+        },
+        {
+            "type": "revolute",
+            "a": 575,
+            "alpha": 0,
+            "d": 0,
+            "theta": "theta2",
+            "offset": -90,
+            "limits": [-95,155]
+        },
+        {
+            "type": "revolute",
+            "a": 40,
+            "alpha": -90,
+            "d": 0,
+            "theta": "theta3",
+            "offset": 0,
+            "limits": [-210,69]
+        },
+        {
+            "type": "revolute",
+            "a": 0,
+            "alpha": 90,
+            "d": 425,
+            "theta": "theta4",
+            "offset": 0,
+            "limits": [-230,230]
+        },
+        {
+            "type": "revolute",
+            "a": 0,
+            "alpha": -90,
+            "d": 0,
+            "theta": "theta5",
+            "offset": 0,
+            "limits": [-130,130]
+        },
+        {
+            "type": "revolute",
+            "a": 0,
+            "alpha": 0,
+            "d": 90,
+            "theta": "theta6",
+            "offset": 180,
+            "limits": [-400,400]
+        }
+    ]
+}
