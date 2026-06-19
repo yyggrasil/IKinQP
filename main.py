@@ -148,7 +148,7 @@ class Robot:
             
         return np.array([X, Y, Z, roll, pitch, yaw], dtype=float)
     
-    def mover_para(self, x_desejado, thetas_iniciais, max_iter=200):
+    def mover_para(self, x_desejado, thetas_iniciais, max_iter=200, return_history=False):
         """ Move o robô usando o algoritmo iterativo iKinQP. """
         
         if not hasattr(self, 'J_func'):
@@ -166,6 +166,8 @@ class Robot:
         dt = 0.05 # Passo de simulação
         
         print(f"Iniciando movimento para alvo:\n{x_d}")
+        
+        history = [thetas.copy()] if return_history else None
         
         for i in range(max_iter):
             # 1. Obter Pose atual e Jacobiano numericamente
@@ -199,9 +201,14 @@ class Robot:
             # 5. Atualizar juntas
             thetas = thetas + q_dot * dt
             
+            if return_history:
+                history.append(thetas.copy())
+            
             if i % 10 == 0:
                 print(f"Iter: {i} | Erro: {erro:.2f} | Posição: X={x_atual[0]:.1f}, Y={x_atual[1]:.1f}, Z={x_atual[2]:.1f}")
                 
+        if return_history:
+            return thetas, history
         return thetas
     
     def export_model(self, filename="robot_model.pkl"):
@@ -210,7 +217,9 @@ class Robot:
             data = {
                 'A': self.A,
                 'J': self.J,
-                'theta_vars': self.theta_vars
+                'theta_vars': self.theta_vars,
+                'p_list': self.p_list,
+                'z_list': self.z_list
             }
             pickle.dump(data, f)
         print(f"Modelo exportado para {filename} com sucesso!")
@@ -223,10 +232,17 @@ class Robot:
                 self.A = data['A']
                 self.J = data['J']
                 self.theta_vars = data['theta_vars']
+                self.p_list = data.get('p_list', None)
+                self.z_list = data.get('z_list', None)
+            
+            if self.p_list is None or self.z_list is None:
+                return False # Força o recalculo
             
             # Gera funções numéricas ultra-rápidas para Numpy
             self.J_func = sp.lambdify(self.theta_vars, self.J, "numpy")
             self.A_func = sp.lambdify(self.theta_vars, self.A, "numpy")
+            self.p_list_func = sp.lambdify(self.theta_vars, self.p_list, "numpy")
+            self.z_list_func = sp.lambdify(self.theta_vars, self.z_list, "numpy")
             print(f"Modelo '{filename}' carregado com sucesso (cálculo instantâneo)!")
             return True
         return False
@@ -247,7 +263,7 @@ class Robot:
         """
         Calculo da matriz jacobiana do Robô
         """
-        if self.p_list == None:
+        if self.p_list is None or self.z_list is None:
             self.calc_A()
 
         self.J = sp.zeros(6, self.n_joints)
@@ -280,24 +296,24 @@ class Robot:
         # Gera funções numéricas ultra-rápidas para Numpy
         self.J_func = sp.lambdify(self.theta_vars, self.J, "numpy")
         self.A_func = sp.lambdify(self.theta_vars, self.A, "numpy")
+        self.p_list_func = sp.lambdify(self.theta_vars, self.p_list, "numpy")
+        self.z_list_func = sp.lambdify(self.theta_vars, self.z_list, "numpy")
 
 
 if __name__ == "__main__":
-    robot = Robot("robot.json")
+    robot1 = Robot("robot.json")
     
-    # 2. Definir o alvo cartesiano (x_desejado). Exemplo:
-    # Queremos alcançar o ponto (X=665, Y=0, Z=1159) com orientação específica
-    # Dica: Na primeira simulação vamos garantir que alcance a posição sem exigir orientação difícil
+    # Definir alvo relativo a base do robo
     alvo_xyz = [40, 0, 1300]
     alvo_rpy = [0, 0, 0] # Em casos reais, a orientação importa muito, mas para teste de alcance...
     x_desejado = alvo_xyz + alvo_rpy
     
-    # 3. Posição inicial das juntas
+    # Posição inicial das juntas
     thetas_iniciais = [0, 0, 0, 0, 0, 0]
     
     print("\nExecutando IKinQP...")
-    # 4. Rodar a simulação e resolver a cinemática inversa iterativamente
-    thetas_finais = robot.mover_para(x_desejado, thetas_iniciais, max_iter=500)
+    # Rodar a simulação e resolver a cinemática inversa iterativamente
+    thetas_finais = robot1.mover_para(x_desejado, thetas_iniciais, max_iter=500)
     
     if thetas_finais is not None:
         print("\nJuntas Finais Encontradas (radianos):")
