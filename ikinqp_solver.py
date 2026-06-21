@@ -73,25 +73,4 @@ class IKinQPSympy:
         # qpsolvers exige que H seja estritamente simétrica (evita erros numéricos)
         H_eval = (H_eval + H_eval.T) / 2.0
         
-        return H_eval, g_eval.flatten()
-
-if __name__ == "__main__":
-    # Inicializando o modelo simbólico (ex: 7 graus de liberdade, 6 dimensões no espaço da tarefa)
-    ikinqp = IKinQPSympy(n_dof=7, n_task=6)
-    
-    print("="*50)
-    print(" FORMULAÇÃO DO PROBLEMA IKINQP (SymPy)")
-    print("="*50)
-    
-    print("\n[1] MATRIZ HESSIANA (H) PARA O SOLVER QP:")
-    sp.pprint(ikinqp.H)
-    
-    print("\n[2] VETOR GRADIENTE (g) PARA O SOLVER QP:")
-    sp.pprint(ikinqp.g)
-    
-    print("\n[3] MATRIZ DE RESTRIÇÃO DE COLISÃO (A):")
-    sp.pprint(ikinqp.A)
-    
-    print("\n[!] DICA: Para usar, extraia o vetor de pose 'x_val' da sua Matriz de Transformação Homogênea,")
-    print("          e passe juntamente com a Matriz Jacobiana 'J_val' para a função 'evaluate_qp_matrices'.")
- 
+        return H_eval, g_eval.flatten() 
