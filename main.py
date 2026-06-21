@@ -146,8 +146,10 @@ class Robot:
             
         return np.array([X, Y, Z, roll, pitch, yaw], dtype=float)
     
-    def mover_para(self, x_desejado, thetas_iniciais, max_iter=200, return_history=False):
-        """ Move o robô usando o algoritmo iterativo iKinQP. """
+    def mover_para(self, x_desejado, thetas_iniciais, max_iter=200, return_history=False, modo_trajetoria='direto', altura_arco=300):
+        """ Move o robô usando o algoritmo iterativo iKinQP. 
+            modo_trajetoria: 'direto' (padrão), 'reta', 'arco'
+        """
         
         if not hasattr(self, 'J_func'):
             self.calc_A()
@@ -156,30 +158,52 @@ class Robot:
         ikin = IKinQPSympy(n_dof=self.n_joints, n_task=6)
         
         thetas = np.array(thetas_iniciais, dtype=float)
-        x_d = np.array(x_desejado, dtype=float)
+        x_d_final = np.array(x_desejado, dtype=float)
         x_dot_d = np.zeros(6) # Queremos parar no alvo
+        
+        # Guardar pose inicial geométrica para interpolação
+        x_inicial = self.get_pose(thetas)
+        
+        # Ponto de controle para Curva Bezier ('arco')
+        p_controle = (x_inicial + x_d_final) / 2.0
+        p_controle[2] += altura_arco
         
         gamma = np.eye(6) * 150.0 # Ganho de convergência
         lam = 0.01 # Amortecimento de singularidade
         dt = 0.05 # Passo de simulação
         
-        print(f"Iniciando movimento para alvo:\n{x_d}")
+        print(f"Iniciando movimento para alvo:\n{x_d_final} | Modo: {modo_trajetoria}")
         
         history = [thetas.copy()] if return_history else None
+        
+        import time
+        start_time = time.time()
         
         for i in range(max_iter):
             # 1. Obter Pose atual e Jacobiano numericamente
             x_atual = self.get_pose(thetas)
             J_atual = self.J_func(*thetas)
             
-            # 2. Calcular erro
-            erro = np.linalg.norm(x_d - x_atual)
-            if erro < 1.0: # Tolerância (1mm de posição / 1rad de giro total)
+            # 2. Gerar ponto de trajetória desejada na iteração atual
+            s = min(i / (max_iter * 0.8), 1.0) # Chega ao alvo aos 80% do tempo total
+            
+            if modo_trajetoria == 'direto':
+                x_d_iter = x_d_final
+            elif modo_trajetoria == 'reta':
+                x_d_iter = (1 - s) * x_inicial + s * x_d_final
+            elif modo_trajetoria == 'arco':
+                x_d_iter = (1 - s)**2 * x_inicial + 2 * (1 - s) * s * p_controle + s**2 * x_d_final
+            else:
+                x_d_iter = x_d_final # Fallback
+            
+            # 3. Calcular erro até o alvo FINAL (para saber quando parar)
+            erro = np.linalg.norm(x_d_final - x_atual)
+            if erro < 1.0 and (modo_trajetoria == 'direto' or s >= 1.0): # Tolerância e fim da interpolação
                 print(f"\nAlvo alcançado na iteração {i}! Erro final: {erro:.3f}")
                 break
                 
-            # 3. Montar matrizes QP
-            H, g = ikin.evaluate_qp_matrices(J_atual, x_atual, x_d, x_dot_d, gamma, lam, dt)
+            # 4. Montar matrizes QP usando o ponto da trajetória
+            H, g = ikin.evaluate_qp_matrices(J_atual, x_atual, x_d_iter, x_dot_d, gamma, lam, dt)
             
             # Converter H para matriz esparsa CSC para máxima performance no OSQP (remove aviso)
             
@@ -205,6 +229,9 @@ class Robot:
             if i % 10 == 0:
                 print(f"Iter: {i} | Erro: {erro:.2f} | Posição: X={x_atual[0]:.1f}, Y={x_atual[1]:.1f}, Z={x_atual[2]:.1f}")
                 
+        calc_time = time.time() - start_time
+        print(f"Tempo total de cálculo: {calc_time:.4f} segundos")
+        
         if return_history:
             return thetas, history
         return thetas

@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+from matplotlib.widgets import Slider
 from main import Robot
 
 # 1. Carregar o robô
@@ -16,13 +16,22 @@ thetas_iniciais = [0, 0, 0, 0, 0, 0]
 
 print("\nExecutando IKinQP para gerar o histórico de movimento...")
 # 3. Rodar a simulação e pegar o histórico (a variável target deve ser return_history=True)
-thetas_finais, history = robot.mover_para(x_desejado, thetas_iniciais, max_iter=500, return_history=True)
+thetas_finais, history = robot.mover_para(x_desejado, thetas_iniciais, max_iter=500, return_history=True, modo_trajetoria='arco') # modo_trajetoria: 'direto' (padrão), 'reta', 'arco'
 
 if not history:
     print("Nenhum histórico gerado.")
     exit()
 
 print(f"\nPreparando animação com {len(history)} frames...")
+
+# Extrair a rota completa do efetuador final (ferramenta)
+path_x, path_y, path_z = [], [], []
+for thetas in history:
+    pts = np.array(robot.p_list_func(*thetas)).reshape(-1, 3)
+    ee_pos = pts[-1]
+    path_x.append(ee_pos[0])
+    path_y.append(ee_pos[1])
+    path_z.append(ee_pos[2])
 
 # 4. Configurar a figura 3D
 fig = plt.figure(figsize=(10, 8))
@@ -31,6 +40,9 @@ ax = fig.add_subplot(111, projection='3d')
 # Inicializar o objeto linha 3D que conectará as juntas ("esqueleto")
 line, = ax.plot([], [], [], 'o-', lw=3, markersize=8, color='b', label='Robô IRB 1300')
 target_scatter = ax.scatter([alvo_xyz[0]], [alvo_xyz[1]], [alvo_xyz[2]], color='r', marker='x', s=100, label='Alvo')
+
+# Desenhar o rastro (linha tracejada) da ferramenta no ar
+ax.plot(path_x, path_y, path_z, '--', color='gray', alpha=0.7, lw=2, label='Trajetória Realizada')
 
 def init():
     # Limites estáticos para o gráfico baseado no alcance típico do robô
@@ -59,10 +71,30 @@ def update(frame):
     
     return line, target_scatter
 
-# 5. Criar a animação
-ani = animation.FuncAnimation(
-    fig, update, frames=len(history), init_func=init, 
-    interval=50, blit=False, repeat=False
+# 5. Configurar o layout e adicionar a barra deslizadora (Slider)
+
+init() # Configura os limites iniciais do gráfico
+
+plt.subplots_adjust(bottom=0.25) # Abre espaço na parte inferior
+ax_slider = plt.axes([0.2, 0.1, 0.65, 0.03])
+
+slider_frame = Slider(
+    ax=ax_slider,
+    label='Frame',
+    valmin=0,
+    valmax=len(history) - 1,
+    valinit=0,
+    valstep=1
 )
+
+def update_slider(val):
+    frame = int(slider_frame.val)
+    update(frame)
+    fig.canvas.draw_idle()
+
+slider_frame.on_changed(update_slider)
+
+# Forçar a atualização para o frame 0 no início
+update_slider(0)
 
 plt.show()
