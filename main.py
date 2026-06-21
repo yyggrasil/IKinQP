@@ -164,9 +164,26 @@ class Robot:
         # Guardar pose inicial geométrica para interpolação
         x_inicial = self.get_pose(thetas)
         
-        # Ponto de controle para Curva Bezier ('arco')
-        p_controle = (x_inicial + x_d_final) / 2.0
-        p_controle[2] += altura_arco
+        # Vetores para o Semicírculo Exato no espaço ('arco')
+        centro_arco = (x_inicial[:3] + x_d_final[:3]) / 2.0
+        raio = np.linalg.norm(x_d_final[:3] - x_inicial[:3]) / 2.0
+        v1 = x_inicial[:3] - centro_arco
+        
+        v_up = np.array([0.0, 0.0, 1.0])
+        # Gram-Schmidt para achar o vetor v2 perpendicular a v1 apontando para cima
+        norm_v1 = np.linalg.norm(v1)
+        if norm_v1 > 1e-6:
+            v1_hat = v1 / norm_v1
+            v2 = v_up - np.dot(v_up, v1_hat) * v1_hat
+            norm_v2 = np.linalg.norm(v2)
+            if norm_v2 > 1e-6:
+                v2_hat = v2 / norm_v2
+            else:
+                v2_hat = np.array([1.0, 0.0, 0.0]) # fallback para movimentos puramente verticais
+        else:
+            v2_hat = v_up
+            
+        v2 = v2_hat * raio
         
         gamma = np.eye(6) * 150.0 # Ganho de convergência
         lam = 0.01 # Amortecimento de singularidade
@@ -192,7 +209,10 @@ class Robot:
             elif modo_trajetoria == 'reta':
                 x_d_iter = (1 - s) * x_inicial + s * x_d_final
             elif modo_trajetoria == 'arco':
-                x_d_iter = (1 - s)**2 * x_inicial + 2 * (1 - s) * s * p_controle + s**2 * x_d_final
+                ang = s * np.pi
+                x_d_iter = np.zeros(6)
+                x_d_iter[:3] = centro_arco + v1 * np.cos(ang) + v2 * np.sin(ang)
+                x_d_iter[3:] = (1 - s) * x_inicial[3:] + s * x_d_final[3:]
             else:
                 x_d_iter = x_d_final # Fallback
             

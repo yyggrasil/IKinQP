@@ -9,14 +9,14 @@ print("Carregando modelo do robô...")
 robot = Robot("robot.json")
 
 # 2. Definir alvo e posição inicial
-alvo_xyz = [40, 0, 1300]
+alvo_xyz = [-700, 100, 500]
 alvo_rpy = [0, 0, 0]
 x_desejado = alvo_xyz + alvo_rpy
 thetas_iniciais = [0, 0, 0, 0, 0, 0]
 
 print("\nExecutando IKinQP para gerar o histórico de movimento...")
 # 3. Rodar a simulação e pegar o histórico (a variável target deve ser return_history=True)
-thetas_finais, history = robot.mover_para(x_desejado, thetas_iniciais, max_iter=500, return_history=True, modo_trajetoria='arco') # modo_trajetoria: 'direto' (padrão), 'reta', 'arco'
+thetas_finais, history = robot.mover_para(x_desejado, thetas_iniciais, max_iter=500, return_history=True, modo_trajetoria='direto') # modo_trajetoria: 'direto' (padrão), 'reta', 'arco'
 
 if not history:
     print("Nenhum histórico gerado.")
