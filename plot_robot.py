@@ -1,4 +1,5 @@
 import numpy as np
+import sympy as sp
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from main import Robot
@@ -10,7 +11,7 @@ robot = Robot("robot.json")
 
 # 2. Definir alvo e posição inicial
 alvo_xyz = [-700, 100, 500]
-alvo_rpy = [0, 0, 0]
+alvo_rpy = [sp.pi, 0, 0]
 x_desejado = alvo_xyz + alvo_rpy
 thetas_iniciais = [0, 0, 0, 0, 0, 0]
 

@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import pickle
 import sympy as sp
 import numpy as np
@@ -146,7 +147,7 @@ class Robot:
             
         return np.array([X, Y, Z, roll, pitch, yaw], dtype=float)
     
-    def mover_para(self, x_desejado, thetas_iniciais, max_iter=200, return_history=False, modo_trajetoria='direto', altura_arco=300):
+    def mover_para(self, x_desejado, thetas_iniciais, max_iter=200, return_history=False, modo_trajetoria='direto'):
         """ Move o robô usando o algoritmo iterativo iKinQP. 
             modo_trajetoria: 'direto' (padrão), 'reta', 'arco'
         """
@@ -193,7 +194,6 @@ class Robot:
         
         history = [thetas.copy()] if return_history else None
         
-        import time
         start_time = time.time()
         
         for i in range(max_iter):
