@@ -125,8 +125,7 @@ class Robot:
             self.p_list.append(p_i)
     
     def get_pose(self, thetas_num):
-        """ Retorna vetor x (6x1) com [X, Y, Z, Roll, Pitch, Yaw] """        
-        import numpy as np
+        """ Retorna vetor x (6x1) com [X, Y, Z, Roll, Pitch, Yaw] """
         
         A_num = self.A_func(*thetas_num)
         
@@ -202,7 +201,7 @@ class Robot:
             J_atual = self.J_func(*thetas)
             
             # 2. Gerar ponto de trajetória desejada na iteração atual
-            s = min(i / (max_iter * 0.8), 1.0) # Chega ao alvo aos 80% do tempo total
+            s = min(i / (max_iter * 0.3), 1.0) # Chega ao alvo aos 80% do tempo total
             
             if modo_trajetoria == 'direto':
                 x_d_iter = x_d_final
@@ -255,6 +254,34 @@ class Robot:
         if return_history:
             return thetas, history
         return thetas
+
+    def mover_trajetoria(self, alvos_lista, thetas_iniciais, max_iter_por_alvo=300, return_history=False, modo_trajetoria='direto'):
+        """
+        Executa uma série de movimentos (targets) sequenciais para uma lista de pontos.
+        """
+        thetas_atuais = np.array(thetas_iniciais, dtype=float)
+        history_total = [thetas_atuais.copy()] if return_history else None
+        
+        print(f"\nIniciando trajetória por {len(alvos_lista)} pontos sequenciais...")
+        
+        for idx, alvo in enumerate(alvos_lista):
+            print(f"\n--- Movendo para o Ponto {idx + 1}/{len(alvos_lista)} ---")
+            if return_history:
+                thetas_atuais, history_parcial = self.mover_para(
+                    alvo, thetas_atuais, max_iter=max_iter_por_alvo, 
+                    return_history=True, modo_trajetoria=modo_trajetoria
+                )
+                history_total.extend(history_parcial[1:]) # Ignora o 1º ponto para não duplicar frames
+            else:
+                thetas_atuais = self.mover_para(
+                    alvo, thetas_atuais, max_iter=max_iter_por_alvo, 
+                    return_history=False, modo_trajetoria=modo_trajetoria
+                )
+                
+        print("\nTrajetória completa finalizada!")
+        if return_history:
+            return thetas_atuais, history_total
+        return thetas_atuais
     
     def export_model(self, filename="robot_model.pkl"):
         """ Salva as matrizes simbólicas para carregamento rápido """
@@ -351,3 +378,24 @@ if __name__ == "__main__":
     robot1 = Robot("robot.json")
     
     print("\nExecutando algoritmo iKinQP...")
+    
+    # Definindo uma LISTA de alvos para o robô percorrer (Dança/Soldagem/Colagem)
+    lista_de_alvos = [
+        [40, 0, 1300, 0, 0, 0],         # Ponto 1 (Cima)
+        [400, 400, 1000, 0, 0, 0],      # Ponto 2 (Frente Direita)
+        [400, -400, 1000, 0, 0, 0],     # Ponto 3 (Frente Esquerda)
+        [-700, 100, 500, 0, 0, 0]       # Ponto 4 (Trás Baixo)
+    ]
+    
+    thetas_iniciais = [0, 0, 0, 0, 0, 0]
+
+    print("\nExecutando IKinQP em Trajetória Contínua...")
+    # Chamando a nova função que aceita a lista de alvos
+    thetas_finais = robot1.mover_trajetoria(lista_de_alvos, thetas_iniciais, max_iter_por_alvo=300, modo_trajetoria='arco')
+    
+    if thetas_finais is not None:
+        print("\n=== RESULTADO FINAL ===")
+        print("Juntas Finais (radianos):")
+        print(np.round(thetas_finais, 4))
+        print("Juntas Finais (graus):")
+        print(np.round(np.degrees(thetas_finais), 2))
