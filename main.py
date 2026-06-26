@@ -393,9 +393,10 @@ if __name__ == "__main__":
     # Chamando a nova função que aceita a lista de alvos
     thetas_finais = robot1.mover_trajetoria(lista_de_alvos, thetas_iniciais, max_iter_por_alvo=300, modo_trajetoria='arco')
     
+    np.set_printoptions(suppress=True)
     if thetas_finais is not None:
         print("\n=== RESULTADO FINAL ===")
         print("Juntas Finais (radianos):")
         print(np.round(thetas_finais, 4))
         print("Juntas Finais (graus):")
-        print(np.round(np.degrees(thetas_finais), 2))
+        print(np.round(np.degrees(thetas_finais), 4))
